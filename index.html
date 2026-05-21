@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Capitol Trades — Follow The Money</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07070f;--sur:#0d0d1c;--brd:#1a1a30;
+  --buy:#00e676;--sell:#ff3355;--gold:#f0c040;
+  --txt:#d5d9f0;--dim:#4a4a80;--mute:#14142a;--card:#0a0a18;
+}
+.day{
+  --bg:#f0f2fb;--sur:#ffffff;--brd:#c8c8e0;
+  --buy:#007038;--sell:#c01040;--gold:#9a6500;
+  --txt:#14142e;--dim:#5858a0;--mute:#d5d5ee;--card:#f8f8ff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans',sans-serif;min-height:100vh;transition:background .25s,color .25s}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.015) 3px,rgba(0,0,0,.015) 6px);pointer-events:none;z-index:9000}
+.day body::after{display:none}
+
+/* Ticker */
+.tw{background:var(--sur);border-bottom:1px solid var(--brd);overflow:hidden;white-space:nowrap;padding:5px 0;height:26px}
+.ti{display:inline-block;animation:scroll 90s linear infinite;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
+.ti span{margin:0 14px}
+.tb{color:var(--buy)}.ts{color:var(--sell)}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* Header */
+header{padding:16px 20px 12px;border-bottom:1px solid var(--brd);display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap;background:var(--sur)}
+.logo h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(26px,5vw,50px);letter-spacing:4px;line-height:1}
+.logo h1 em{color:var(--gold);font-style:normal}
+.logo p{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:2px;margin-top:2px}
+.hr{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.upd{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim)}
+.upd em{color:var(--gold);font-style:normal}
+.hbtns{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.pill{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);border:1px solid var(--brd);padding:3px 8px;display:inline-flex;align-items:center;gap:4px}
+.pdot{width:5px;height:5px;border-radius:50%;background:var(--buy);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:1px;padding:6px 12px;cursor:pointer;transition:all .2s;background:transparent;border:1px solid var(--brd);color:var(--dim)}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn-y{border-color:var(--gold);color:var(--gold)}
+.btn-y:hover{background:var(--gold);color:#000}
+.btn-y:disabled{opacity:.4;cursor:not-allowed}
+
+/* API Key banner */
+.apibanner{background:rgba(240,192,64,.07);border-bottom:2px solid rgba(240,192,64,.25);padding:12px 18px;display:flex;flex-direction:column;gap:10px}
+.apibanner-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.apibanner label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--gold);letter-spacing:2px}
+.apilink{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--gold);text-decoration:underline}
+.key-status{font-family:'IBM Plex Mono',monospace;font-size:9px;padding:3px 8px;border:1px solid var(--brd);color:var(--dim)}
+.key-ok{border-color:rgba(0,230,118,.4)!important;color:var(--buy)!important}
+/* Full-width input row */
+.apikey-input{width:100%;background:var(--bg);border:2px solid rgba(240,192,64,.4);color:var(--txt);font-family:'IBM Plex Mono',monospace;font-size:14px;padding:10px 12px;outline:none;-webkit-appearance:none}
+.apikey-input:focus{border-color:var(--gold)}
+.apikey-input::placeholder{color:var(--dim);font-size:10px}
+.go-row{display:flex;gap:8px;align-items:center}
+.go-btn{background:var(--gold);border:none;color:#000;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:2px;padding:10px 22px;cursor:pointer;flex-shrink:0;-webkit-appearance:none}
+.go-btn:active{opacity:.8}
+.key-len{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)}
+.apibanner-hint{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);line-height:1.7}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));border-bottom:1px solid var(--brd)}
+.stat{padding:10px 14px;border-right:1px solid var(--brd)}
+.stat:last-child{border-right:none}
+.slbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--dim);margin-bottom:2px}
+.sval{font-family:'Bebas Neue',sans-serif;font-size:22px}
+.cw{color:var(--txt)}.cg{color:var(--buy)}.cr{color:var(--sell)}.cy{color:var(--gold)}
+
+/* Source bar */
+.srcbar{display:flex;gap:6px;padding:6px 14px;border-bottom:1px solid var(--brd);background:var(--sur);flex-wrap:wrap;align-items:center}
+.srclbl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:2px}
+.sbadge{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 7px;border:1px solid var(--brd);color:var(--dim)}
+.sbadge.ok{border-color:rgba(0,230,118,.4);color:var(--buy)}
+.sbadge.ok::before{content:'● '}
+.sbadge.fail{border-color:rgba(255,51,85,.4);color:var(--sell)}
+.sbadge.fail::before{content:'✗ '}
+.sbadge.spin{border-color:rgba(240,192,64,.3);color:var(--gold);animation:fp 1s infinite}
+@keyframes fp{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* Layout */
+.main{display:grid;grid-template-columns:1fr 280px;min-height:calc(100vh - 260px)}
+.left{border-right:1px solid var(--brd);display:flex;flex-direction:column}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid var(--brd);overflow-x:auto;background:var(--sur);-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tab{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;padding:9px 12px;cursor:pointer;color:var(--dim);border:none;background:transparent;white-space:nowrap;border-bottom:2px solid transparent;transition:all .15s;flex-shrink:0}
+.tab.on{color:var(--gold);border-bottom-color:var(--gold)}
+
+/* Filters */
+.filters{padding:7px 10px;border-bottom:1px solid var(--brd);display:flex;gap:5px;align-items:center;flex-wrap:wrap;background:var(--sur)}
+.flbl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);letter-spacing:2px}
+.fbtn{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 7px;background:transparent;border:1px solid var(--brd);color:var(--dim);cursor:pointer;transition:all .12s}
+.fbtn.on{border-color:var(--gold);color:var(--gold)}
+.srch{background:var(--bg);border:1px solid var(--brd);color:var(--txt);font-family:'IBM Plex Mono',monospace;font-size:9px;padding:3px 8px;margin-left:auto;width:140px;outline:none}
+.srch:focus{border-color:var(--gold)}
+.srch::placeholder{color:var(--dim)}
+
+/* Sort */
+.sortbar{display:flex;gap:4px;padding:5px 10px;border-bottom:1px solid var(--brd);align-items:center;background:var(--sur)}
+.sortlbl{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim)}
+.sbtn{font-family:'IBM Plex Mono',monospace;font-size:8px;padding:2px 6px;background:transparent;border:1px solid var(--brd);color:var(--dim);cursor:pointer}
+.sbtn.on{border-color:rgba(240,192,64,.5);color:var(--gold)}
+.rcnt{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim)}
+
+/* Table */
+.tblwrap{overflow:auto;flex:1}
+table{width:100%;border-collapse:collapse}
+thead th{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--dim);padding:6px 10px;text-align:left;border-bottom:1px solid var(--brd);position:sticky;top:0;background:var(--bg);z-index:1;white-space:nowrap}
+.day thead th{background:var(--sur)}
+tbody tr{border-bottom:1px solid var(--brd);animation:fi .2s ease both;opacity:0}
+@keyframes fi{to{opacity:1}}
+tbody tr:hover{background:var(--sur)}
+td{padding:7px 10px;font-size:12px;vertical-align:top}
+.ctick{font-family:'IBM Plex Mono',monospace;font-weight:500;color:var(--gold);font-size:12px}
+.cco{font-size:9px;color:var(--dim);margin-top:1px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmeta{display:flex;gap:3px;align-items:center;margin-top:2px;flex-wrap:wrap}
+.pty{font-family:'IBM Plex Mono',monospace;font-size:7px;padding:1px 4px}
+.pd{background:rgba(0,80,255,.12);color:#6688ff;border:1px solid rgba(0,80,255,.2)}
+.pr{background:rgba(255,40,40,.12);color:#ff7070;border:1px solid rgba(255,40,40,.2)}
+.pi{background:rgba(160,160,160,.08);color:#888;border:1px solid rgba(160,160,160,.15)}
+.chm{font-family:'IBM Plex Mono',monospace;font-size:7px;color:var(--dim)}
+.tbuy{color:var(--buy);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500}
+.tsell{color:var(--sell);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500}
+.camt{font-family:'IBM Plex Mono',monospace;font-size:10px}
+.cdate{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);white-space:nowrap}
+.cage{font-size:8px;color:var(--dim);opacity:.5;margin-top:1px}
+.own{font-family:'IBM Plex Mono',monospace;font-size:7px;color:var(--dim);border:1px solid var(--brd);padding:1px 3px}
+
+/* Right panel */
+.right{overflow-y:auto;background:var(--sur)}
+.psec{border-bottom:1px solid var(--brd);padding:11px}
+.pttl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:3px;color:var(--dim);margin-bottom:8px}
+.hrow{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding:5px 6px;background:var(--card);border:1px solid var(--brd);cursor:pointer;transition:border-color .12s}
+.hrow:hover{border-color:var(--gold)}
+.hnum{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--dim);width:14px;text-align:center;flex-shrink:0}
+.hinfo{flex:1;min-width:0}
+.htick{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold)}
+.hco{font-size:8px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbs{display:flex;gap:4px;margin-top:1px}
+.hbar{height:2px;background:var(--brd);width:36px;flex-shrink:0;margin-top:4px}
+.hfill{height:2px;background:var(--gold);transition:width .6s}
+.hcnt{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);flex-shrink:0}
+.trow{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding:5px 6px;border:1px solid var(--brd);background:var(--card)}
+.tav{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:11px;flex-shrink:0}
+.tinfo{flex:1;min-width:0}
+.tname{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tmeta{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim)}
+.tstats{text-align:right;flex-shrink:0}
+.tcnt{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--gold)}
+.tvol{font-family:'IBM Plex Mono',monospace;font-size:7px;color:var(--dim)}
+.yrwrap{display:flex;flex-wrap:wrap;gap:4px}
+.abtxt{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--dim);line-height:1.8}
+.abtxt strong{color:var(--txt)}
+
+/* States */
+.loading{padding:40px 18px;text-align:center}
+.ldl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);opacity:0;animation:fi .4s ease both;margin-bottom:7px}
+.cur{color:var(--buy);animation:blink .7s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.errbox{margin:12px;padding:14px;background:rgba(255,51,85,.04);border:1px solid rgba(255,51,85,.2);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--sell);line-height:1.9}
+.infobox{margin:12px;padding:14px;background:rgba(240,192,64,.04);border:1px solid rgba(240,192,64,.2);font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold);line-height:1.9}
+.infobox a,.errbox a{color:var(--gold);text-decoration:underline}
+.empty{padding:18px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim)}
+
+footer{text-align:center;padding:8px;font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--dim);border-top:1px solid var(--brd);background:var(--sur)}
+footer a{color:var(--dim);text-decoration:none}
+footer a:hover{color:var(--gold)}
+
+@media(max-width:760px){
+  .main{grid-template-columns:1fr}
+  .right{border-top:1px solid var(--brd)}
+  .stat:nth-child(n+5){display:none}
+  header{padding:10px 14px}
+}
+</style>
+</head>
+<body>
+
+<div class="tw"><div class="ti" id="tickEl">▲ NVDA · Senate · $50K-$100K &nbsp; ▼ AAPL · House · $15K-$50K &nbsp; ▲ MSFT · Senate · $100K-$250K &nbsp; ▼ NVDA · Senate · $50K-$100K &nbsp; ▲ AAPL · House · $15K-$50K &nbsp; ▲ MSFT · Senate · $100K-$250K</div></div>
+
+<header>
+  <div class="logo">
+    <h1>CAPITOL <em>TRADES</em></h1>
+    <p>CONGRESSIONAL STOCK ACTIVITY — STOCK ACT PUBLIC DISCLOSURES</p>
+  </div>
+  <div class="hr">
+    <div class="upd" id="updEl">LAST UPDATED: <em>—</em></div>
+    <div class="hbtns">
+      <div class="pill"><div class="pdot"></div>AUTO 06:00</div>
+      <button class="btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+      <button class="btn btn-y" id="refBtn" onclick="loadAll()">⟳ REFRESH</button>
+    </div>
+  </div>
+</header>
+
+<!-- Anthropic API key banner — always visible -->
+<div class="apibanner" id="apiBanner">
+  <div class="apibanner-top">
+    <label>ANTHROPIC API KEY</label>
+    <span class="key-status" id="keyStatus">NO KEY SAVED</span>
+    <a class="apilink" href="https://console.anthropic.com/settings/keys" target="_blank">→ GET FREE KEY AT CONSOLE.ANTHROPIC.COM</a>
+  </div>
+  <input class="apikey-input" id="apiKeyInput" type="text"
+    placeholder="Paste your Anthropic API key here (sk-ant-...)"
+    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+    oninput="document.getElementById('keyLen').textContent=this.value.replace(/\s/g,'').length+' chars'">
+  <div class="go-row">
+    <button class="go-btn" onclick="saveKeyAndLoad()">▶ GO</button>
+    <span class="key-len" id="keyLen">0 chars</span>
+  </div>
+  <div class="apibanner-hint">
+    Uses the Anthropic API with live web search to fetch real congressional trade disclosures.<br>
+    ① Paste key above &nbsp;② Confirm chars look right &nbsp;③ Tap GO — takes ~15 seconds to fetch.<br>
+    Key saved in browser only. Get yours free at console.anthropic.com → API Keys.
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="slbl">TOTAL</div><div class="sval cw" id="s0">—</div></div>
+  <div class="stat"><div class="slbl">BUYS</div><div class="sval cg" id="s1">—</div></div>
+  <div class="stat"><div class="slbl">SELLS</div><div class="sval cr" id="s2">—</div></div>
+  <div class="stat"><div class="slbl">POLITICIANS</div><div class="sval cy" id="s3">—</div></div>
+  <div class="stat"><div class="slbl">TICKERS</div><div class="sval cw" id="s4">—</div></div>
+  <div class="stat"><div class="slbl">FRESHNESS</div><div class="sval cy" id="s5" style="font-size:13px;padding-top:6px">—</div></div>
+</div>
+
+<div class="srcbar">
+  <span class="srclbl">SOURCE:</span>
+  <span class="sbadge" id="src0">ANTHROPIC + WEB SEARCH</span>
+  <span class="sbadge" id="srcN">AWAITING KEY</span>
+</div>
+
+<div class="main">
+  <div class="left">
+    <div class="tabs">
+      <button class="tab on"  data-t="all"    onclick="setTab(this)">ALL</button>
+      <button class="tab"     data-t="buy"    onclick="setTab(this)">BUYS</button>
+      <button class="tab"     data-t="sell"   onclick="setTab(this)">SELLS</button>
+      <button class="tab"     data-t="Senate" onclick="setTab(this)">SENATE</button>
+      <button class="tab"     data-t="House"  onclick="setTab(this)">HOUSE</button>
+    </div>
+    <div class="filters">
+      <span class="flbl">PARTY:</span>
+      <button class="fbtn on" data-p="all" onclick="setPty(this)">ALL</button>
+      <button class="fbtn"    data-p="D"   onclick="setPty(this)">DEM</button>
+      <button class="fbtn"    data-p="R"   onclick="setPty(this)">REP</button>
+      <button class="fbtn"    data-p="I"   onclick="setPty(this)">IND</button>
+      <input class="srch" id="srch" type="text" placeholder="TICKER / NAME..." oninput="render()">
+    </div>
+    <div class="sortbar">
+      <span class="sortlbl">SORT:</span>
+      <button class="sbtn on" data-k="date"   onclick="setSort(this)">DATE ↓</button>
+      <button class="sbtn"    data-k="ticker" onclick="setSort(this)">TICKER</button>
+      <button class="sbtn"    data-k="name"   onclick="setSort(this)">NAME</button>
+      <button class="sbtn"    data-k="amt"    onclick="setSort(this)">AMOUNT</button>
+      <span class="rcnt" id="rcnt"></span>
+    </div>
+    <div class="tblwrap" id="tbl">
+      <div class="infobox">
+        <strong>⚡ HOW TO GET STARTED</strong><br><br>
+        1. Go to <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com/settings/keys</a><br>
+        2. Create a free account and generate an API key (starts with sk-ant-)<br>
+        3. Paste it in the bar above and tap GO<br><br>
+        The app uses Claude + web search to pull real, live congressional trade disclosures every time you refresh. Your key is stored only in this browser.
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="psec">
+      <div class="pttl">🔥 MOST ACTIVE STOCKS</div>
+      <div id="hotEl"><div class="empty">LOAD DATA FIRST</div></div>
+    </div>
+    <div class="psec">
+      <div class="pttl">⚡ TOP TRADERS</div>
+      <div id="trdrEl"><div class="empty">LOAD DATA FIRST</div></div>
+    </div>
+    <div class="psec">
+      <div class="pttl">📅 FILTER BY YEAR</div>
+      <div class="yrwrap" id="yrEl"><span class="empty" style="padding:4px">—</span></div>
+    </div>
+    <div class="psec">
+      <div class="pttl">ℹ️ ABOUT</div>
+      <div class="abtxt">
+        Uses <strong>Claude AI + live web search</strong> to find and parse the latest STOCK Act disclosures from Senate and House members.<br><br>
+        Data is fetched fresh on each refresh from public disclosure sources. Amounts are ranges per STOCK Act rules.<br><br>
+        Tap any stock in the hot list to filter the table instantly.<br><br>
+        <strong>Not financial advice.</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  POWERED BY <a href="https://anthropic.com" target="_blank">ANTHROPIC CLAUDE</a> + WEB SEARCH &nbsp;|&nbsp;
+  <a href="https://efdsearch.senate.gov" target="_blank">SENATE EFD</a> &nbsp;|&nbsp;
+  <a href="https://disclosures-clerk.house.gov" target="_blank">HOUSE CLERK</a> &nbsp;|&nbsp;
+  NOT FINANCIAL ADVICE
+</footer>
+
+<script>
+// ─── Amount midpoints ──────────────────────────────────────────
+const AMT={
+  '$1,001 - $15,000':8000,'$15,001 - $50,000':32500,
+  '$50,001 - $100,000':75000,'$100,001 - $250,000':175000,
+  '$250,001 - $500,000':375000,'$500,001 - $1,000,000':750000,
+  '$1,000,001 - $5,000,000':3000000,'$5,000,001 - $25,000,000':15000000,
+  '$25,000,001 - $50,000,000':37500000,'Over $50,000,000':55000000,
+};
+
+// ─── State ─────────────────────────────────────────────────────
+let all=[], tabF='all', ptyF='all', sk='date', sd=-1, yr='all';
+let dark=true, apiKey='';
+
+// ─── Theme ─────────────────────────────────────────────────────
+function toggleTheme(){
+  dark=!dark;
+  document.body.classList.toggle('day',!dark);
+  document.getElementById('themeBtn').textContent=dark?'🌙':'☀️';
+  localStorage.setItem('ctTheme',dark?'dark':'light');
+}
+
+// ─── Key save/load ─────────────────────────────────────────────
+function updateKeyStatus(){
+  const el=document.getElementById('keyStatus');
+  if(apiKey){
+    el.textContent='KEY SAVED ('+apiKey.length+' chars)';
+    el.className='key-status key-ok';
+  } else {
+    el.textContent='NO KEY SAVED';
+    el.className='key-status';
+  }
+}
+
+function saveKeyAndLoad(){
+  const raw=document.getElementById('apiKeyInput').value;
+  const v=raw.replace(/\s/g,''); // strip all whitespace
+  if(!v || v.length<20){
+    alert('Please paste a valid Anthropic API key (should start with sk-ant- and be ~100+ chars)');
+    return;
+  }
+  apiKey=v;
+  localStorage.setItem('ctKey',v);
+  document.getElementById('apiKeyInput').value=v; // show cleaned value
+  document.getElementById('keyLen').textContent=v.length+' chars';
+  updateKeyStatus();
+  loadAll();
+}
+
+// ─── Boot ──────────────────────────────────────────────────────
+(function(){
+  const t=localStorage.getItem('ctTheme');
+  if(t==='light'){dark=false;document.body.classList.add('day');document.getElementById('themeBtn').textContent='☀️';}
+  const k=localStorage.getItem('ctKey');
+  if(k){
+    apiKey=k;
+    document.getElementById('apiKeyInput').value=k;
+    document.getElementById('keyLen').textContent=k.length+' chars';
+  }
+  updateKeyStatus();
+  if(apiKey) loadAll();
+})();
+
+// ─── Fetch via Anthropic API + web search ──────────────────────
+async function fetchTradesFromClaude(){
+  const today=new Date().toISOString().slice(0,10);
+
+  const prompt=`Search the web for the most recent US congressional stock trades disclosed under the STOCK Act. 
+Look at sources like Capitol Trades (capitoltrades.com), QuiverQuant (quiverquant.com/congresstrading), 
+House financial disclosures (disclosures-clerk.house.gov), and Senate disclosures (efdsearch.senate.gov).
+
+Return ONLY a valid JSON object with NO markdown formatting, no backticks, no explanation. Use this exact structure:
+{
+  "trades": [
+    {
+      "ticker": "AAPL",
+      "company": "Apple Inc.",
+      "name": "Nancy Pelosi",
+      "party": "D",
+      "chamber": "House",
+      "type": "buy",
+      "amount": "$1,001 - $15,000",
+      "date": "2025-03-15",
+      "disclosed": "2025-04-01",
+      "owner": ""
+    }
+  ],
+  "fetched": "${today}"
+}
+
+Rules:
+- Return at least 40 real trades from real public disclosures
+- type must be exactly "buy" or "sell"
+- party must be "D", "R", or "I"
+- chamber must be "House" or "Senate"
+- amount must match exactly one of: "$1,001 - $15,000", "$15,001 - $50,000", "$50,001 - $100,000", "$100,001 - $250,000", "$250,001 - $500,000", "$500,001 - $1,000,000", "$1,000,001 - $5,000,000"
+- date format: YYYY-MM-DD
+- owner: "Spouse", "Joint", "Child", or empty string for self
+- Only include real disclosed trades, not estimates`;
+
+  const response=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:4000,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:prompt}],
+    }),
+  });
+
+  if(response.status===401) throw new Error('Invalid API key — check console.anthropic.com');
+  if(!response.ok) throw new Error('API error: HTTP '+response.status);
+
+  const data=await response.json();
+
+  // Extract the final text block (after tool use)
+  const textBlocks=data.content.filter(b=>b.type==='text');
+  if(!textBlocks.length) throw new Error('No text response from Claude');
+  const raw=textBlocks[textBlocks.length-1].text.trim();
+
+  // Parse JSON — strip any accidental markdown fences
+  const clean=raw.replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  const start=clean.indexOf('{'), end=clean.lastIndexOf('}');
+  if(start===-1||end===-1) throw new Error('No JSON found in response');
+  return JSON.parse(clean.slice(start,end+1));
+}
+
+// ─── Load all ──────────────────────────────────────────────────
+async function loadAll(){
+  if(!apiKey){
+    document.getElementById('tbl').innerHTML=`<div class="infobox">
+      <strong>⚡ PASTE YOUR ANTHROPIC API KEY ABOVE AND TAP GO</strong><br><br>
+      Get a free key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>
+    </div>`;
+    return;
+  }
+  const btn=document.getElementById('refBtn');
+  btn.disabled=true; btn.textContent='⟳ LOADING...';
+  const s0=document.getElementById('src0');
+  s0.className='sbadge spin'; s0.textContent='SEARCHING WEB...';
+  document.getElementById('srcN').textContent='FETCHING...';
+
+  document.getElementById('tbl').innerHTML=`<div class="loading">
+    <div class="ldl" style="animation-delay:.0s">CONNECTING TO ANTHROPIC...</div>
+    <div class="ldl" style="animation-delay:.6s">SEARCHING DISCLOSURE DATABASES...</div>
+    <div class="ldl" style="animation-delay:1.2s">PARSING TRADE RECORDS...</div>
+    <div class="ldl" style="animation-delay:1.8s">THIS TAKES ~15 SECONDS... <span class="cur">█</span></div>
+  </div>`;
+  document.getElementById('hotEl').innerHTML='<div class="empty">LOADING...</div>';
+  document.getElementById('trdrEl').innerHTML='<div class="empty">LOADING...</div>';
+
+  try{
+    const parsed=await fetchTradesFromClaude();
+    const trades=parsed.trades||[];
+
+    // Normalise
+    all=trades.map(t=>({
+      ticker:(t.ticker||'').toUpperCase().trim(),
+      company:t.company||'',
+      name:t.name||'',
+      chamber:t.chamber||'Congress',
+      party:t.party||'?',
+      type:(t.type||'').toLowerCase()==='buy'?'buy':'sell',
+      amount:t.amount||'',
+      amtMid:AMT[t.amount]||0,
+      date:t.date||'',
+      disclosed:t.disclosed||'',
+      owner:t.owner||'',
+    })).filter(t=>t.ticker&&t.name)
+      .sort((a,b)=>b.date.localeCompare(a.date));
+
+    s0.className='sbadge ok';
+    s0.textContent='CLAUDE + WEB SEARCH ('+all.length+' TRADES)';
+    document.getElementById('srcN').textContent='FETCHED '+new Date().toLocaleTimeString();
+
+    if(all.length===0){
+      document.getElementById('tbl').innerHTML=`<div class="errbox">
+        <strong>NO TRADES RETURNED</strong><br><br>
+        Claude connected but returned 0 valid trades. Try refreshing — the web search may need another attempt.
+      </div>`;
+    } else {
+      buildYears(); updateStats(); renderSidebar(); buildTicker(); render();
+    }
+  }catch(e){
+    console.error(e);
+    s0.className='sbadge fail'; s0.textContent='ERROR';
+    document.getElementById('srcN').textContent='FAILED';
+    const isKey=e.message.toLowerCase().includes('key')||e.message.includes('401');
+    if(isKey){ apiKey=''; localStorage.removeItem('ctKey'); updateKeyStatus(); }
+    document.getElementById('tbl').innerHTML=`<div class="errbox">
+      <strong>⚠ ${isKey?'INVALID API KEY':'FETCH ERROR'}</strong><br><br>
+      ${e.message}<br><br>
+      ${isKey
+        ? 'Please check your key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> and try again.'
+        : 'Try refreshing. If it persists, check that your API key has credits available at console.anthropic.com.'}
+    </div>`;
+  }
+  updateTimestamp();
+  btn.disabled=false; btn.textContent='⟳ REFRESH';
+}
+
+// ─── Stats ─────────────────────────────────────────────────────
+function updateStats(){
+  const b=all.filter(t=>t.type==='buy').length, s=all.filter(t=>t.type==='sell').length;
+  const p=new Set(all.map(t=>t.name)).size, tx=new Set(all.map(t=>t.ticker)).size;
+  const dates=all.map(t=>t.date).filter(Boolean).sort();
+  const fresh=dates.length?dates[dates.length-1]:'—';
+  document.getElementById('s0').textContent=all.length;
+  document.getElementById('s1').textContent=b;
+  document.getElementById('s2').textContent=s;
+  document.getElementById('s3').textContent=p;
+  document.getElementById('s4').textContent=tx;
+  document.getElementById('s5').textContent=fresh;
+}
+
+// ─── Year filter ────────────────────────────────────────────────
+function buildYears(){
+  const yrs=[...new Set(all.map(t=>t.date.slice(0,4)).filter(Boolean))].sort().reverse();
+  document.getElementById('yrEl').innerHTML=
+    `<button class="fbtn on" onclick="setYr('all',this)">ALL</button>`+
+    yrs.map(y=>`<button class="fbtn" onclick="setYr('${y}',this)">${y}</button>`).join('');
+}
+function setYr(y,btn){yr=y;document.querySelectorAll('#yrEl .fbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');render();}
+
+// ─── Filter/Sort ────────────────────────────────────────────────
+function setTab(b){tabF=b.dataset.t;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));b.classList.add('on');render();}
+function setPty(b){ptyF=b.dataset.p;document.querySelectorAll('.fbtn[data-p]').forEach(t=>t.classList.remove('on'));b.classList.add('on');render();}
+function setSort(b){
+  if(sk===b.dataset.k)sd*=-1; else{sk=b.dataset.k;sd=sk==='date'?-1:1;}
+  document.querySelectorAll('.sbtn').forEach(t=>{t.classList.remove('on');t.textContent=t.dataset.k.toUpperCase();});
+  b.classList.add('on'); b.textContent=b.dataset.k.toUpperCase()+(sd===-1?' ↓':' ↑'); render();
+}
+
+function filtered(){
+  const q=(document.getElementById('srch').value||'').toLowerCase();
+  return all.filter(t=>{
+    if(tabF==='buy'&&t.type!=='buy')return false;
+    if(tabF==='sell'&&t.type!=='sell')return false;
+    if(tabF==='Senate'&&t.chamber!=='Senate')return false;
+    if(tabF==='House'&&t.chamber!=='House')return false;
+    if(ptyF!=='all'&&t.party!==ptyF)return false;
+    if(yr!=='all'&&!t.date.startsWith(yr))return false;
+    if(q&&!`${t.ticker} ${t.company} ${t.name}`.toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>{
+    let av,bv;
+    if(sk==='date'){av=a.date;bv=b.date;}
+    else if(sk==='ticker'){av=a.ticker;bv=b.ticker;}
+    else if(sk==='name'){av=a.name;bv=b.name;}
+    else{av=a.amtMid;bv=b.amtMid;}
+    return av<bv?sd:av>bv?-sd:0;
+  });
+}
+
+// ─── Render table ───────────────────────────────────────────────
+function render(){
+  const rows=filtered();
+  document.getElementById('rcnt').textContent=rows.length+' RECORDS';
+  if(!rows.length){document.getElementById('tbl').innerHTML='<div class="empty">NO TRADES MATCH FILTERS</div>';return;}
+  const now=Date.now(), PC={D:'pd',R:'pr',I:'pi','?':'pi'};
+  const html=rows.map((t,i)=>{
+    const dA=t.date?Math.round((now-new Date(t.date))/86400000):null;
+    const age=dA===null?'':dA<1?'TODAY':dA+'d ago';
+    const ty=t.type==='buy'?'<span class="tbuy">▲ BUY</span>':'<span class="tsell">▼ SELL</span>';
+    const own=t.owner&&t.owner!=='Self'&&t.owner!==''&&t.owner!=='--'?`<span class="own">${t.owner}</span>`:'';
+    return `<tr style="animation-delay:${Math.min(i*.015,1)}s">
+      <td><div class="ctick">${t.ticker}</div><div class="cco" title="${t.company}">${t.company}</div></td>
+      <td><div style="font-size:11px">${t.name}</div>
+          <div class="cmeta"><span class="pty ${PC[t.party]||'pi'}">${t.party}</span>
+          <span class="chm">${t.chamber}</span>${own}</div></td>
+      <td>${ty}</td>
+      <td class="camt">${t.amount||'—'}</td>
+      <td class="cdate">${t.date||'—'}<div class="cage">${age}</div></td>
+      <td class="cdate">${t.disclosed||'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('tbl').innerHTML=`
+    <table>
+      <thead><tr>
+        <th>TICKER / ASSET</th><th>POLITICIAN</th><th>TYPE</th>
+        <th>AMOUNT</th><th>TRADE DATE</th><th>DISCLOSED</th>
+      </tr></thead>
+      <tbody>${html}</tbody>
+    </table>`;
+}
+
+// ─── Sidebar ────────────────────────────────────────────────────
+function renderSidebar(){
+  const sm={};
+  all.forEach(t=>{if(!sm[t.ticker])sm[t.ticker]={co:t.company,n:0,b:0,s:0};sm[t.ticker].n++;sm[t.ticker][t.type==='buy'?'b':'s']++;});
+  const topS=Object.entries(sm).sort((a,b)=>b[1].n-a[1].n).slice(0,8);
+  const mx=topS[0]?.[1].n||1;
+  document.getElementById('hotEl').innerHTML=topS.length?topS.map(([tk,d],i)=>`
+    <div class="hrow" onclick="quickFilter('${tk}')">
+      <div class="hnum">${i+1}</div>
+      <div class="hinfo">
+        <div class="htick">${tk}</div><div class="hco">${d.co}</div>
+        <div class="hbs"><span style="font-size:7px;color:var(--buy)">▲${d.b}</span><span style="font-size:7px;color:var(--sell)">▼${d.s}</span></div>
+      </div>
+      <div class="hbar"><div class="hfill" style="width:${(d.n/mx*100).toFixed(0)}%"></div></div>
+      <div class="hcnt">${d.n}</div>
+    </div>`).join(''):'<div class="empty">NO DATA</div>';
+
+  const tm={};
+  all.forEach(t=>{if(!tm[t.name])tm[t.name]={p:t.party,ch:t.chamber,n:0,v:0};tm[t.name].n++;tm[t.name].v+=t.amtMid;});
+  const topT=Object.entries(tm).sort((a,b)=>b[1].n-a[1].n).slice(0,7);
+  const cols=['#f0c040','#00e676','#ff3355','#4488ff','#ff8844','#cc44ff','#00cfff'];
+  document.getElementById('trdrEl').innerHTML=topT.length?topT.map(([nm,d],i)=>{
+    const ini=nm.split(' ').map(c=>c[0]).join('').slice(0,2).toUpperCase();
+    const c=cols[i%cols.length];
+    const vol=d.v>0?'$'+(d.v>=1e6?(d.v/1e6).toFixed(1)+'M':(d.v/1e3).toFixed(0)+'K')+'+':'N/A';
+    return `<div class="trow">
+      <div class="tav" style="background:${c}18;color:${c};border:1px solid ${c}40">${ini}</div>
+      <div class="tinfo"><div class="tname" title="${nm}">${nm}</div><div class="tmeta">${d.p!=='?'?d.p+' · ':''}${d.ch}</div></div>
+      <div class="tstats"><div class="tcnt">${d.n} trades</div><div class="tvol">${vol}</div></div>
+    </div>`;
+  }).join(''):'<div class="empty">NO DATA</div>';
+}
+
+// ─── Ticker tape ────────────────────────────────────────────────
+function buildTicker(){
+  const items=all.slice(0,40).map(t=>{
+    const c=t.type==='buy'?'tb':'ts', sym=t.type==='buy'?'▲':'▼';
+    return `<span class="${c}">${sym} ${t.ticker}</span> <span>${t.name} · ${t.amount||t.chamber}</span>`;
+  });
+  if(items.length) document.getElementById('tickEl').innerHTML=[...items,...items].join('');
+}
+
+function quickFilter(tk){document.getElementById('srch').value=tk;render();document.querySelector('.tblwrap')?.scrollIntoView({behavior:'smooth'});}
+function updateTimestamp(){const n=new Date();document.getElementById('updEl').innerHTML=`LAST UPDATED: <em>${n.toLocaleDateString()} ${n.toLocaleTimeString()}</em>`;}
+
+// ─── Auto-refresh 6AM ───────────────────────────────────────────
+function scheduleRefresh(){
+  const now=new Date(),next=new Date();
+  next.setHours(6,0,0,0);
+  if(now>=next)next.setDate(next.getDate()+1);
+  setTimeout(()=>{loadAll();scheduleRefresh();},next-now);
+}
+scheduleRefresh();
+</script>
+</body>
+</html>
